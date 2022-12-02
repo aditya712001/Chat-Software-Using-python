@@ -15,7 +15,7 @@ No installation of libraries required.
 How to use?
  Clone the repository
 Run the following command in the terminal on server side:
-python server.py
+python server.py 
 Run the following command in the terminal on client side:
-python client.py
+python client.py 
 Clients can be on the same computer, or different computers, but should be on the same network as the server
