@@ -9,11 +9,11 @@ User login system via email
 Broadcast messages and files
 Typing indicator and user online detection
 
-Installation
+Installation:
 No installation of libraries required.
 
 How to use?
-Clone the repository
+ Clone the repository
 Run the following command in the terminal on server side:
 python server.py
 Run the following command in the terminal on client side:
