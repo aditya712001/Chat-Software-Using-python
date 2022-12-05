@@ -1,6 +1,6 @@
-# if message == "NICK":
-#               self.sock.send(self.nickname.encode('utf-8'))
-
+# Client side 
+# client.sock.send() -> a specific client sends message  to server ant then server broadcasts the message
+# client.sock.recv() -> a specific client receives message from the server
 
 import socket 
 import threading
@@ -13,6 +13,10 @@ import os
 HOST = "127.0.0.1"
 # HOST = "0.0.0.0"
 PORT = 9000
+
+SEPARATOR = '<SEPARATOR>'
+ENDTAG = '<ENDTAG>'
+MSG_DELIMITER = '\!?^'
 
 # We create a client which has a socket , The socket connects to Host and port 
 # The client takes nickname fro the dialog box 
@@ -475,33 +479,37 @@ class Client:
             
             print(filepath)
             file_size = os.path.getsize(filepath)
-            with open(filepath, "rb") as file:
-                c = 0
-                filedata=''
-                # Running loop while c != file_size.
-                while c <= file_size:
-                    data = file.read(1024)
-                    if not (data):
-                        break
-                    try:
-                        # self.sock.sendall(data)
-                        print(data)                        
-                        c += len(data)
-                        filedata=filedata+data.decode('utf-8')
-                        # message = f"{self.nickname} : {data.decode('utf-8')}"
-                        # self.sock.send(message.encode('utf-8'))
-                        # message = str(self.sock.recv(1024).decode('utf-8'))
-                    except:
-                        print("some error in sending file")
-                        break
-                message = '#'+f"{self.nickname} : {filedata}"
-                self.sock.send(message.encode('utf-8'))       
-                
-            # file = open(filepath , "rb")
-            # data = file.read()
-            
-            # self.sock.sendall(data)
-            
+            # with open(filepath, "rb") as file:
+            #     c = 0
+            #     filedata=''
+            #     self.sock.send(b'#')
+            #     data = file.read()
+            #     self.sock.sendall(data)
+            #     # Running loop while c != file_size.
+            #     # while c <= file_size:
+            #     #     data = file.read(1024)
+            #     #     if not (data):
+            #     #         break
+            #     #     # try:
+            #     #     self.sock.sendall(data)
+            #     #     print(data)                        
+            #     #     c += len(data)
+            #     #     # filedata=filedata+data.decode('utf-8')
+            #     #     # message = f"{self.nickname} : {data.decode('utf-8')}"
+            #     #     # self.sock.send(message.encode('utf-8'))
+            #     #     # message = str(self.sock.recv(1024).decode('utf-8'))
+            #     #     # except:
+            #     #         # print("some error in sending file")
+            #     #         # break
+            #     message = '#'+f"{self.nickname} : {filedata}"
+            #     self.sock.send(b'#')
+            #     # self.sock.send(message.encode('utf-8'))  
+            self.sock.sendall(f"{os.path.basename(filepath)}{SEPARATOR}{self.nickname}{MSG_DELIMITER}".encode('utf-8'))
+            f = open(filepath, 'rb')
+            data = f.read()
+            self.sock.sendall(data)
+            self.sock.sendall(ENDTAG.encode('utf-8'))#ascii
+            f.close()
 
          # The entire gui of the chat window is written here 
         self.win = tkinter.Tk()  #  `defined a tkinter window for self here 
@@ -543,22 +551,6 @@ class Client:
         self.attach_button.config(font= ("Arial", 12))
         self.attach_button.pack(padx = 20, pady = 5)
         
-        # Typing Operation when self.win window is open
-        # t1 = threading.Thread(target=self.typing,args=(Event,))
-        # t2 = threading.Thread(target=self.nottyping,args=(Event,))
-        
-        # import time
-        
-        # self.win.bind("<KeyPress>",self.typing)
-        # if(time.time() - self.last_presstime >= 20):
-        #     print('executing')
-        #     self.nottyping()
-            
-        # self.win.bind("<KeyRelease>",t2.start())
-        
-        # self.win.bind("<KeyPress>",self.typing)
-        # self.win.bind("<KeyRelease>",self.nottyping)
-
         self.gui_done = True
         
         # what happens if we close the window 
@@ -592,25 +584,12 @@ class Client:
         
     # Callback to handle typing events
     def typing_indicator_callback(self,sv):
-        # nonlocal current_typing_state
-        # nonlocal prev_typing_state
-
         content = sv.get()
         print(content)
         if content != '':
             self.typing()
         else:
             self.nottyping()
-        # else:
-        #     current_typing_state = True
-
-        # if current_typing_state != prev_typing_state:
-        #     print('Changed')
-        #     # \! : Typing indicator command
-        #     client.sendall(f"\!{SEPARATOR}{username}{SEPARATOR}{person}".encode('utf-8'))
-        #     # pass # Send typing info to person
-        # prev_typing_state = current_typing_state
-
 
     def receive(self):
             # Token ->
@@ -619,72 +598,98 @@ class Client:
             # '$' -> a user is typing
             while self.running:
                 # try:
-                message = str(self.sock.recv(1024).decode('utf-8'))
-                
-                l=message.split('#')
-                
-                if(len(message)>0 and message[0] == '@'): # New User Joined
-                    print("user list received")
-                    print(message)
-                    active_users = message.split('@')
-                    print(active_users)
+                    message = self.sock.recv(1024).decode('utf-8')
+                    # l=message.split('#')
                     
-                    self.active_label = tkinter.Label(self.win, text = "Active Users " ,bg = "lightgray")
-                    self.active_label.config(font= ("Arial", 12))
-                    self.active_label.place(x = 1250 , y = 20)
-                    
-                    self.active_area = tkinter.scrolledtext.ScrolledText(self.win, width= 40, height = 20, bg= "#3C99DC" )
-                    # self.active_area.pack(padx = 20, pady = 5)
-                    self.active_area.place(x = 1150, y = 50)
-                    self.active_area.configure(state ='disabled')
-                    for user_name in active_users:
-                        self.active_area.config(state = "normal")
-                        actual_user_name=user_name[2:len(user_name)-1]
-                        self.active_area.insert('end', str(actual_user_name+'\n'))
-                        self.active_area.yview('end')
-                        self.active_area.config(state ='disabled')
-                elif len(l)==2: 
-                    l2=l[1].split(' : ')   
-                    self.text_area.config(state = "normal")
-                    self.text_area.insert('end', l2[0]+' : file sent\n')
-                    self.text_area.yview('end')
-                    self.text_area.config(state ='disabled')
-                    l3=l2[1].split('\r')
-                    filedata=''
-                    for data in l3:
-                        filedata=filedata+data
-                    with open(l2[0]+'s file','w') as file:
-                        file.write(filedata)
+                    if(len(message)>0 and message[0] == '@'): # New User Joined
+                        print("user list received")
+                        print(message)
+                        active_users = message.split('@')
+                        print(active_users)
                         
-                elif(len(message)>0 and message[0] == '$'):
-                    typing_users = message.split('$')
-                    self.who_typing.delete("1.0", "end")
-                    cnt = 0
-                    for user_name in typing_users:
-                        if(user_name == ""):
-                            continue
-                        else:
-                            cnt += 1
-                            self.who_typing.config(state = "normal")
-                            self.who_typing.insert('end', str(user_name)+",")
-                            self.who_typing.yview('end')
-                        # self.who_typing.config(state ='disabled')
-                    if(cnt == 1):
-                        self.who_typing.insert('end', "is typing")
-                    elif(cnt >1 ):
-                        self.who_typing.insert('end', "are typing")
-                else:
-                    # if self.gui_done:
-                        self.text_area.config(state = "normal")
-                        self.text_area.insert('end', message)
-                        self.text_area.yview('end')
-                        self.text_area.config(state ='disabled')
-                # except ConnectionAbortedError:
-                #     break
-                # except:
-                #     print("Error")
-                #     self.sock.close()
-                #     break
+                        self.active_label = tkinter.Label(self.win, text = "Active Users " ,bg = "lightgray")
+                        self.active_label.config(font= ("Arial", 12))
+                        self.active_label.place(x = 1250 , y = 20)
+                        
+                        self.active_area = tkinter.scrolledtext.ScrolledText(self.win, width= 40, height = 20, bg= "#3C99DC" )
+                        # self.active_area.pack(padx = 20, pady = 5)
+                        self.active_area.place(x = 1150, y = 50)
+                        self.active_area.configure(state ='disabled')
+                        for user_name in active_users:
+                            self.active_area.config(state = "normal")
+                            actual_user_name=user_name[2:len(user_name)-1]
+                            self.active_area.insert('end', str(actual_user_name+'\n'))
+                            self.active_area.yview('end')
+                            self.active_area.config(state ='disabled')
+                    # elif len(l)==2: 
+                    #     l2=l[1].split(' : ')   
+                    #     self.text_area.config(state = "normal")
+                    #     self.text_area.insert('end', l2[0]+' : file sent\n')
+                    #     self.text_area.yview('end')
+                    #     self.text_area.config(state ='disabled')
+                    #     l3=l2[1].split('\r')
+                    #     filedata=''
+                    #     for data in l3:
+                    #         filedata=filedata+data
+                    #     with open(l2[0]+'s file','w') as file:
+                    #         file.write(filedata)
+                    elif SEPARATOR in message:
+                        print("Received a file")
+                        # message contains filename and filesize separated by separator
+                        filename, from_user = message.split(SEPARATOR, 1)
+                        # client data storage
+                        client_data = self.nickname + '_data'
+                        if not os.path.exists(client_data):
+                            os.makedirs(client_data)
+                        file_byte_info = from_user.split(MSG_DELIMITER)
+                        filepath = os.path.join(client_data, "From_" + file_byte_info[0] + '__' + filename)
+                        print(file_byte_info[0])
+                        f = open(filepath, 'wb')
+                        
+                        file_bytes = b''
+                        if len(file_byte_info) > 1:
+                            file_bytes += (file_byte_info[1].encode('utf-8'))
+
+                        while 1:
+                            if file_bytes.endswith(ENDTAG.encode('utf-8')):#ascii
+                                break
+                            data = self.sock.recv(1024)
+                            file_bytes += data
+
+                        f.write(file_bytes[:-len(ENDTAG)])
+                        f.close()
+
+                        print('Saved a file to cient data')
+                    
+                    elif(len(message)>0 and message[0] == '$'):
+                        typing_users = message.split('$')
+                        self.who_typing.delete("1.0", "end")
+                        cnt = 0
+                        for user_name in typing_users:
+                            if(user_name == ""):
+                                continue
+                            else:
+                                cnt += 1
+                                self.who_typing.config(state = "normal")
+                                self.who_typing.insert('end', str(user_name)+",")
+                                self.who_typing.yview('end')
+                            # self.who_typing.config(state ='disabled')
+                        if(cnt == 1):
+                            self.who_typing.insert('end', "is typing")
+                        elif(cnt >1 ):
+                            self.who_typing.insert('end', "are typing")
+                    else:
+                        # if self.gui_done:
+                            self.text_area.config(state = "normal")
+                            self.text_area.insert('end', message)
+                            self.text_area.yview('end')
+                            self.text_area.config(state ='disabled')
+                    # except ConnectionAbortedError:
+                    #     break
+                    # except:
+                    #     print("Error")
+                    #     self.sock.close()
+                    #     break
 
 
 client = Client(HOST , PORT)
