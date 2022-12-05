@@ -1,38 +1,21 @@
-# Problem The address is the local host address of the client, we want 
-        # IPv4 Address. . . . . . . . . . . : 172.16.177.213
-        # Subnet Mask . . . . . . . . . . . : 255.255.240.0
-        # So we should assure that the ip addresses conected over LAN are unique ( Checking leave for later )
-
-# Accounts
-
-# sudeeprnp@gmail.com 
-# pass -> 1234
-
-# s@gmail.com 
-# pass-> 1234
-
-# a@gmail.com 
-# pass-> 1234
-
-# 1 
-# pass-> 1
-
 # server 
 # client.send() -> server sends message to a specific client 
 # client.recv(1024) -> server requests message from a specific client 
 # broadcast -> server sends message to all connected  clients
 
-# Client side 
-# client.sock.send() -> a specific client sends message  to server ant then server broadcasts the message
-# client.sock.recv() -> a specific client receives message from the server
-
 import socket
 import threading 
 import sqlite3
+import os
 
 # HOST = socket.gethostbyname(socket.gethostname())
 HOST = "127.0.0.1"
 PORT = 9000
+
+SEPARATOR = '<SEPARATOR>'
+ENDTAG = '<ENDTAG>'
+MSG_DELIMITER = '\!?^'
+# ALL_USERS = '<%All%>'
 
 sqlite3.connect('1.db')
 
@@ -55,8 +38,70 @@ def handle(client):
         try:
             message = str(client.recv(1024).decode('utf-8'))
     
+            # if message[0]=='#':
+            #     filedata=message
+            #     while len(filedata)>1 and filedata[-1]!='#':
+            #         filedata+=str(client.recv(1024).decode('ascii'))
+            #     print(filedata)
+            #     broadcast(filedata.encode('ascii'))
+            if SEPARATOR in message: # File transfer
+                print("Received a file")
+                # message contains filename and filesize separated by separator
+                filename, from_user = message.split(SEPARATOR, 1)
+                # to_user_name = 'ALL'
+                # server data storage:
+                server_data = 'server_data'
+                if not os.path.exists(server_data):
+                    os.makedirs(server_data)
+                # for file in list(os.listdir(server_data)):
+                #     os.remove(os.path.join(server_data, file))
+                file_byte_info = from_user.split(MSG_DELIMITER)
+                filepath = os.path.join(server_data, file_byte_info[0]+ '@' +  filename)
+                f = open(filepath, 'wb')
+                print(file_byte_info)
+                file_bytes = b''
+                if len(file_byte_info) > 1:
+                    file_bytes += (file_byte_info[1].encode('utf-8'))#ascii
+
+                while 1:
+                    if file_bytes.endswith(ENDTAG.encode('utf-8')):#ascii
+                        break
+                    data = client.recv(1024)
+                    file_bytes += data
+
+                f.write(file_bytes[:-len(ENDTAG)])
+                f.close()
+
+                print('Saved a file to server')
+                # File transfer:
+                send_msg =  file_byte_info[0]+ ': Sent file - ' + os.path.basename(filename)+'\n'
+                rec_msg =   file_byte_info[0] + ': You received a file -' + os.path.basename(filename)+'\n' 
                 
-            if(message[0] == '~'):
+                for tou in nicknames:
+                    if tou.decode('utf-8') == file_byte_info[0]:
+                        continue
+                    
+                    index=nicknames.index(tou)
+                    message = rec_msg
+                    clients[index].sendall(message.encode('utf-8'))#nothing
+                    
+                    # message = from_user + '~' + rec_msg
+                    # client_id[tou].sendall(message.encode())  # message format: "sender~message"
+
+                    # File transfer:
+                    clients[index].sendall(f"{os.path.basename(filename)}{SEPARATOR}{file_byte_info[0]}{MSG_DELIMITER}".encode('utf-8'))#nothing
+
+                    f = open(filepath, 'rb')
+                    data = f.read()
+                    clients[index].sendall(data)
+                    clients[index].sendall(ENDTAG.encode('utf-8'))#ascii
+                    f.close()
+                            
+                message = send_msg
+                index=nicknames.index(file_byte_info[0].encode('utf-8'))
+                clients[index].sendall(message.encode('utf-8'))#nothing
+                
+            elif(message[0] == '~'):
                 # message = ~nickname
                 temp_list = message.split('~') 
                 nontyping_user = '$' + temp_list[1] #$1
@@ -108,9 +153,6 @@ def handle(client):
 def receive():
     while True:
         client,  address = server.accept()
-        # Problem The address is the local host address of the client, we want 
-        # IPv4 Address. . . . . . . . . . . : 172.16.177.213
-        # Subnet Mask . . . . . . . . . . . : 255.255.240.0
         
         print(f"connected with {address}")
         
