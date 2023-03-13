@@ -96,7 +96,7 @@ def handle_email(client_email,rand):
         #     return False
 
     FROM_ADDR = "adityaramdaspatil@gmail.com" #email address can be changed
-    FROM_PASSWD = "zbht hbqb ztwm zxex"
+    FROM_PASSWD = ""#enter ur 2 step verification password
 
     
 
